@@ -3,8 +3,9 @@ Command Line Interface for Dna Storage Codec Reed Solomon.
 """
 import argparse
 import csv
-import json
+import math
 import sys
+from pathlib import Path
 from agents.models import SystemTaskPayload
 from agents.supervisor import SystemSupervisor
 from agents.base import AuditLogger
@@ -45,9 +46,22 @@ def main(argv=None):
     args = parser.parse_args(argv)
 
     if args.command == "audit":
+        # Input validation
+        if not args.task_id or not args.task_id.strip():
+            print("Error: --task-id cannot be empty")
+            return 1
+        if not args.target or not args.target.strip():
+            print("Error: --target cannot be empty")
+            return 1
+        if not isinstance(args.primary, (int, float)) or math.isnan(args.primary) or math.isinf(args.primary):
+            print("Error: --primary must be a valid finite number")
+            return 1
+        if not isinstance(args.secondary, (int, float)) or math.isnan(args.secondary) or math.isinf(args.secondary):
+            print("Error: --secondary must be a valid finite number")
+            return 1
         payload = SystemTaskPayload(
-            task_id=args.task_id,
-            target_identifier=args.target,
+            task_id=args.task_id.strip(),
+            target_identifier=args.target.strip(),
             primary_metric=args.primary,
             secondary_metric=args.secondary,
             status_descriptor=args.status,
@@ -80,7 +94,20 @@ def main(argv=None):
         return 0
 
     if args.command == "batch":
-        with open(args.input, mode="r", encoding="utf-8-sig") as f:
+        # Path traversal protection
+        input_path = Path(args.input).resolve()
+        output_path = Path(args.output).resolve()
+        cwd = Path.cwd().resolve()
+        if not str(input_path).startswith(str(cwd)):
+            print(f"Error: Input path must be within the project directory: {cwd}")
+            return 1
+        if not str(output_path).startswith(str(cwd)):
+            print(f"Error: Output path must be within the project directory: {cwd}")
+            return 1
+        if not input_path.exists():
+            print(f"Error: Input file not found: {args.input}")
+            return 1
+        with open(input_path, mode="r", encoding="utf-8-sig") as f:
             reader = csv.DictReader(f)
             fieldnames = list(reader.fieldnames or [])
             rows = list(reader)
@@ -104,11 +131,11 @@ def main(argv=None):
             row_dict["audit_hash"] = dossier.audit_hash
             out_rows.append(row_dict)
 
-        with open(args.output, mode="w", encoding="utf-8", newline="") as f:
+        with open(output_path, mode="w", encoding="utf-8", newline="") as f:
             writer = csv.DictWriter(f, fieldnames=out_fields)
             writer.writeheader()
             writer.writerows(out_rows)
-        print(f"Processed {len(out_rows)} records -> {args.output}")
+        print(f"Processed {len(out_rows)} records -> {output_path}")
         return 0
 
     if args.command == "serve":

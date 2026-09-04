@@ -3,9 +3,13 @@ Automated Pytest Test Suite for Dna Storage Codec Reed Solomon.
 Domain: Clinical & Biomedical AI
 Standard: CAP / CLSI / ISO Standards
 """
+import os
 import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
+
+# Set secure audit key for tests
+os.environ.setdefault("AUDIT_SECRET_KEY", "test-audit-secret-key-2026-secure")
 
 import pytest
 from agents.base import PHIGuard, AuditLogger, SecurityException
