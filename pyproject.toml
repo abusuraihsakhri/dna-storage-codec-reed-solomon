@@ -30,4 +30,7 @@ Homepage = "https://github.com/abusuraihsakhri/dna-storage-codec-reed-solomon"
 Repository = "https://github.com/abusuraihsakhri/dna-storage-codec-reed-solomon"
 
 [tool.setuptools.packages.find]
-include = ["agents*", "dna_storage_codec*"]
+include = ["agents*", "dna_storage_codec*", "web*"]
+
+[tool.setuptools.package-data]
+web = ["index.html", "codec.mjs"]
