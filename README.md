@@ -1,208 +1,85 @@
-# DNA Storage Codec Reed Solomon
+# DNA Storage Codec Reed–Solomon
 
-> **Domain:** DNA Data Storage & Clinical Decision Support  
-> **Standards:** DNA Data Storage Alliance Guidelines, CAP / CLSI / ISO Standards
+A small reference implementation for encoding binary data as DNA text and recovering it with per-block Reed–Solomon error correction. The browser interface works without a backend or network request.
 
-<div align="center">
+## Features
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-![Python](https://img.shields.io/badge/Python-3.10%20%7C%203.11%20%7C%203.12-3776AB.svg?logo=python&logoColor=white)
-![FastAPI](https://img.shields.io/badge/FastAPI-0.111-009688.svg?logo=fastapi&logoColor=white)
-![Audit Trail](https://img.shields.io/badge/Audit-HMAC--SHA256_Tamper--Evident-brightgreen.svg)
-![Zero-PHI Guard](https://img.shields.io/badge/Guard-Zero--PHI_Outbound-blue.svg)
-![Docker](https://img.shields.io/badge/Docker-Ready-2496ED.svg?logo=docker&logoColor=white)
+- **Binary → DNA → binary**: encode arbitrary files and recover their original bytes.
+- **Fixed DNA composition**: each two-bit symbol maps to one of `AC`, `CA`, `GT` or `TG`. Encoded sequences contain exactly 50% G/C bases and no homopolymer runs longer than two bases.
+- **RS(255,253)**: two parity bytes per block, correcting **one unknown erroneous byte in each block**. Extra errors are not guaranteed recoverable.
+- **Integrity**: SHA-256 digest verifies the recovered payload.
+- **Local browser app**: encode/decode text or files, import/export `.dna` files, and view correction statistics. All codec processing stays in the browser.
+- **Python CLI and library**: identical interoperable wire format in Python and JavaScript.
+- **Legacy audit utilities**: the original metric-threshold evaluators, FastAPI endpoints and batch CSV commands are retained, separately from the DNA codec.
 
-</div>
+This is **not** a DNA fountain code or an experimentally validated DNA synthesis/sequencing workflow. The codec operates on deterministic digital sequences, not FASTQ reads. The legacy domain-threshold rules are illustrative and should not be treated as clinical or laboratory standards.
 
----
+## Browser application
 
-## 📖 What It Does
-
-DNA Storage Codec Reed Solomon is a dual-domain platform combining:
-
-1. **DNA Storage Codec Engine** (`dna_storage_codec/`): Fountain Code & Reed-Solomon Base-4 DNA Codec Agent for encoding binary data into DNA sequences with error correction, homopolymer avoidance, and GC content balancing.
-
-2. **Clinical Decision Support System** (`agents/`): Enterprise distributed component platform with PHI outbound protection, HMAC-SHA256 tamper-evident audit trails, and multi-worker consensus evaluation.
-
-3. **Enrichment Suite** (`enrichment.py`): Advanced DNA storage optimization engines including ECC optimization, PCR amplification simulation, and information density metrics.
-
----
-
-## ⚙️ Key Capabilities & Algorithmic Modules
-
-### DNA Storage Codec (`dna_storage_codec/`)
-- **BinaryToBase4CodecAgent**: Primary parameter & integrity auditor
-- **HomopolymerRunLimiterAgent**: Critical kinetics & security safeguard
-- **ReedSolomonECCGeneratorAgent**: Protocol conformance & anomaly triage
-- **DNAStorageCoordinator**: Executive coordinator with air-gapped supervisory intelligence
-
-### Clinical Decision Support (`agents/`)
-- **InvariantQCWorker**: Primary mathematical & protocol boundary auditor
-- **SafetyEscalationWorker**: Safety boundary, toxicity & emergency interlock
-- **ProtocolConformanceWorker**: Spec conformance, anomaly triage & discordance checker
-- **SystemSupervisor**: Master distributed component coordinator
-
-### Security & Audit
-- **PHIGuard**: Zero-PHI outbound interceptor blocking SSNs, MRNs, phone numbers, emails
-- **AuditTrail**: Cryptographic tamper-evident HMAC-SHA256 chained audit logs
-- **Path Traversal Protection**: Batch processing validates file paths within project directory
-
----
-
-## 💻 Installation
+Open `web/index.html` via a local HTTP server or use the GitHub Pages site once deployed. Modern browsers need HTTPS or localhost for Web Crypto.
 
 ```bash
-# Clone the repository
+python -m http.server 8080 --directory web
+# Open http://localhost:8080
+```
+
+Select text or a file and click **Encode to DNA**. Copy/save the DNA sequence, or paste/import a DNA sequence and click **Decode & verify**. Save decoded binary data when needed. The 16 MiB payload limit applies to both interfaces. Large DNA strings can consume substantially more memory than the original binary data.
+
+## Python installation and CLI
+
+Requires Python 3.10 or newer.
+
+```bash
 git clone https://github.com/abusuraihsakhri/dna-storage-codec-reed-solomon.git
 cd dna-storage-codec-reed-solomon
-
-# Install dependencies
-pip install -e .
-
-# For development (testing)
-pip install pytest fastapi uvicorn pydantic
+python -m pip install -e .
+dna-storage-codec-reed-solomon encode -i input.bin -o encoded.dna
+dna-storage-codec-reed-solomon decode -i encoded.dna -o restored.bin
 ```
 
----
+From Python:
 
-## 💻 CLI Quickstart & Usage
+```python
+from dna_storage_codec.codec import encode_bytes, decode_bytes
 
-### 1. Audit Single Task
-```bash
-python cli.py audit --task-id TASK-001 --target KEY-01 --primary 28.5 --secondary 14.2 --critical --status DISCORDANT
+sequence = encode_bytes(b"hello")
+assert decode_bytes(sequence) == b"hello"
 ```
 
-### 2. Interactive Chat
-```bash
-python cli.py chat "What is the system status?"
-```
+DNA strings can be copied between the Python and JavaScript implementations. Each protected byte is represented by eight nucleotides. A 40-byte header stores the magic, original byte count and SHA-256 digest; each RS codeword adds two parity bytes.
 
-### 3. Batch Processing
-```bash
-python cli.py batch -i sample.csv -o results.csv
-```
+## Legacy threshold audit and REST API
 
-### 4. Verify Audit Trail
-```bash
-python cli.py verify-audit
-```
+The existing `cli.py`, `agents/`, `enrichment.py`, and `dna_storage_codec.cli audit/batch/chat` interfaces remain available. They are metric-rule or simulation utilities, **not molecular DNA coders**.
 
-### 5. Launch REST API Server
+The legacy audit service requires `AUDIT_SECRET_KEY` (a random secret of at least 16 characters, preferably 32 random bytes) and API extras:
+
 ```bash
+python -m pip install -e ".[api]"
+export AUDIT_SECRET_KEY="$(python -c 'import secrets; print(secrets.token_hex(32))')"
 python cli.py serve --host 127.0.0.1 --port 8000
+# Browse http://127.0.0.1:8000/
+# API: /health, /api/audit, /api/chat, /api/audit/logs, /metrics
 ```
 
-### 6. DNA Storage Codec CLI
-```bash
-python -m dna_storage_codec.cli audit --task-id DNA-001 --target TARGET-GEN-01 --primary 29.4 --secondary 15.1
-python -m dna_storage_codec.cli batch -i sample.csv -o dna_results.csv
-python -m dna_storage_codec.cli serve --port 8000
-```
+Docker Compose runs the backend on **localhost only**. Set `AUDIT_SECRET_KEY` in your environment (or in a local `.env` file based on `.env.example`), then run `docker compose up --build`. Never commit real secrets.
 
-### Parameter Reference
-- `--task-id`: Unique task/case identifier (required, non-empty)
-- `--target`: Entity or target identifier (required, non-empty)
-- `--primary`: Primary measurement value (must be finite number)
-- `--secondary`: Secondary measurement value (must be finite number)
-- `--critical`: Emergency escalation flag
-- `--status`: Status descriptor (e.g., NOMINAL, DISCORDANT_ANOMALY)
+Audit records are held in process memory and chained using HMAC-SHA256; they do not survive a restart. The PHI regex guard is not comprehensive de-identification, and the development API has no authentication. Do not expose the audit API publicly or submit identifiable clinical data.
 
----
-
-## 🛡️ Security Configuration
-
-### Required Environment Variable
-The audit trail requires a secure secret key:
+## Development and testing
 
 ```bash
-# Generate a secure key
-python -c "import secrets; print(secrets.token_hex(32))"
-
-# Set the environment variable
-export AUDIT_SECRET_KEY="your-secure-key-here"  # Linux/Mac
-set AUDIT_SECRET_KEY=your-secure-key-here        # Windows
+python -m pip install -e ".[dev]"
+export AUDIT_SECRET_KEY="test-only-long-audit-key-not-production"
+python -m pytest -q
+node --test web/test_codec.mjs  # Node.js 22 recommended
+python -m build
 ```
 
-### Security Features
-- **Zero-PHI Outbound Interceptor:** Active regex inspection blocking SSNs, MRNs, phone numbers, emails, and patient identifiers
-- **Tamper-Evident HMAC-SHA256 Audit Trail:** Chained, cryptographically signed logs for every evaluation
-- **Path Traversal Protection:** Batch processing validates all file paths remain within project directory
-- **Input Validation:** All numeric inputs validated as finite numbers; string inputs sanitized
+CI runs Python tests on 3.10–3.13, Python/JavaScript interoperability checks, JavaScript codec tests, and wheel/sdist builds. The `.github/workflows/pages.yml` workflow publishes `web/` to GitHub Pages when Pages is enabled and configured to use GitHub Actions.
 
----
+## Privacy, compatibility, and license
 
-## 🧪 Testing & Verification
+Browser encode/decode uses Web Crypto locally and does not transmit files to a server. The optional **Run server audit** control sends the entered metrics to the same-origin FastAPI server; it is unavailable on static GitHub Pages. Clipboard access depends on browser permissions. The browser app targets modern Chrome, Firefox, Safari and Edge, with no runtime third-party JavaScript dependencies.
 
-Run the automated test suite:
-
-```bash
-# Set audit key for tests
-export AUDIT_SECRET_KEY="test-audit-secret-key-2026-secure"
-
-# Run all tests
-pytest -v
-
-# Run specific test modules
-pytest tests/test_security.py -v
-pytest tests/test_dna_storage_codec.py -v
-pytest tests/test_dna_storage_codec_reed_solomon.py -v
-pytest tests/test_enrichment.py -v
-```
-
-Execute high-throughput batch simulation benchmarks:
-
-```bash
-python simulator.py 1000
-```
-
----
-
-## 🐳 Container Deployment
-
-```bash
-docker build -t dna-storage-codec-reed-solomon .
-docker run -p 8000:8000 -e AUDIT_SECRET_KEY=your-secure-key dna-storage-codec-reed-solomon
-```
-
----
-
-## 📁 Project Structure
-
-```
-dna-storage-codec-reed-solomon/
-├── agents/                      # Clinical Decision Support System
-│   ├── __init__.py
-│   ├── api.py                   # FastAPI REST endpoints
-│   ├── base.py                  # PHI Guard, Audit Trail, Security
-│   ├── learning.py              # Bayesian Calibration Engine
-│   ├── llm_factory.py           # LLM Provider Factory
-│   ├── metrics.py               # Prometheus Metrics Collector
-│   ├── models.py                # Pydantic Data Models
-│   ├── streamer.py              # WebSocket Telemetry Streamer
-│   ├── supervisor.py            # Master Orchestrator
-│   └── workers.py               # Specialized Domain Workers
-├── dna_storage_codec/           # DNA Storage Codec Engine
-│   ├── __init__.py
-│   ├── agents.py                # DNA Codec Sub-Agents
-│   ├── cli.py                   # DNA Codec CLI
-│   ├── engine.py                # Core Algorithmic Engine
-│   ├── models.py                # DNA Codec Data Models
-│   └── server.py                # DNA Codec FastAPI Server
-├── tests/                       # Test Suite
-│   ├── test_dna_storage_codec.py
-│   ├── test_dna_storage_codec_reed_solomon.py
-│   ├── test_enrichment.py
-│   └── test_security.py
-├── cli.py                       # Main CLI Entry Point
-├── enrichment.py                # DNA Storage Enrichment Engines
-├── simulator.py                 # High-Throughput Simulator
-├── pyproject.toml               # Project Configuration
-├── Dockerfile                   # Container Definition
-└── docker-compose.yml           # Multi-Container Orchestration
-```
-
----
-
-## 📄 License
-
-This project is licensed under the MIT License - see [LICENSE](LICENSE) for details.
+Licensed under [MIT](LICENSE).
