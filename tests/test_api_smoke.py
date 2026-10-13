@@ -25,7 +25,7 @@ def test_legacy_api_and_frontend():
         response = client.post("/api/audit", json=payload)
         assert response.status_code == 200
         assert response.json()["total_alerts"] == 0
-        assert client.post("/api/audit", json={**payload, "primary_metric": float("nan")}).status_code == 422
+        assert client.post("/api/audit", json={**payload, "primary_metric": "NaN"}).status_code == 422
         assert client.get("/api/audit/logs").json()["verified"] is True
 
 def test_package_api_and_frontend():
