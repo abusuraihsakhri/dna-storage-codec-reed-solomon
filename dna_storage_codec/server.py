@@ -11,7 +11,9 @@ coordinator = DNAStorageCoordinator()
 def create_app():
     try:
         from fastapi import FastAPI
-        from pydantic import BaseModel
+        from fastapi.staticfiles import StaticFiles
+        from pathlib import Path
+        from pydantic import BaseModel, Field
 
         app = FastAPI(
             title="DNA-Storage: Fountain Code & Reed-Solomon Base-4 DNA Codec Agent",
@@ -22,8 +24,8 @@ def create_app():
         class TaskRequest(BaseModel):
             task_id: str = "TASK-2026-001"
             target_identifier: str = "TARGET-BIO-KEY"
-            primary_metric: float = 28.5
-            secondary_metric: float = 14.2
+            primary_metric: float = Field(default=28.5, allow_inf_nan=False)
+            secondary_metric: float = Field(default=14.2, allow_inf_nan=False)
             status_descriptor: str = "DISCORDANT_ANOMALY"
             is_critical_flag: bool = True
             attributes: Dict[str, Any] = {}
@@ -52,6 +54,7 @@ def create_app():
         def api_chat(req: ChatRequest):
             return {"response": coordinator.query_supervisory_chat(req.query)}
 
+        app.mount("/", StaticFiles(directory=Path(__file__).resolve().parent.parent / "web", html=True), name="web")
         return app
     except ImportError:
         return None
