@@ -74,7 +74,7 @@ def main(argv=None):
             return 1
         try:
             if args.command == "encode":
-                destination.write_text(encode_bytes(source.read_bytes()) + "\\n", encoding="ascii")
+                destination.write_text(encode_bytes(source.read_bytes()), encoding="ascii")
             else:
                 destination.write_bytes(decode_bytes(source.read_text(encoding="ascii")))
         except (OSError, UnicodeError, CodecError) as exc:
