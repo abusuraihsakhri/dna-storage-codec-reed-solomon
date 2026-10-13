@@ -8,6 +8,7 @@ import sys
 from pathlib import Path
 from .models import FrontierPayload
 from .agents import DNAStorageCoordinator
+from .codec import CodecError, encode_bytes, decode_bytes
 
 coordinator = DNAStorageCoordinator()
 
@@ -31,6 +32,14 @@ def _inside_directory(path: Path, directory: Path) -> bool:
 def main(argv=None):
     parser = argparse.ArgumentParser(prog="dna-storage-codec-reed-solomon", description="DNA-Storage: Fountain Code & Reed-Solomon Base-4 DNA Codec Agent")
     subparsers = parser.add_subparsers(dest="command", required=True)
+
+    # Actual binary/DNA codec, independent of legacy threshold audits.
+    p_encode = subparsers.add_parser("encode", help="Encode a binary file as DNA text")
+    p_encode.add_argument("-i", "--input", required=True, help="Input binary file")
+    p_encode.add_argument("-o", "--output", required=True, help="Output .dna file")
+    p_decode = subparsers.add_parser("decode", help="Decode a DNA text file to binary")
+    p_decode.add_argument("-i", "--input", required=True, help="Input .dna file")
+    p_decode.add_argument("-o", "--output", required=True, help="Output binary file")
 
     # Audit
     p_audit = subparsers.add_parser("audit", help="Run single task evaluation")
@@ -56,6 +65,23 @@ def main(argv=None):
     p_serve.add_argument("--port", type=int, default=8000)
 
     args = parser.parse_args(argv)
+
+    if args.command in ("encode", "decode"):
+        source = Path(args.input)
+        destination = Path(args.output)
+        if source.resolve() == destination.resolve():
+            print("Error: input and output must be different files", file=sys.stderr)
+            return 1
+        try:
+            if args.command == "encode":
+                destination.write_text(encode_bytes(source.read_bytes()) + "\\n", encoding="ascii")
+            else:
+                destination.write_bytes(decode_bytes(source.read_text(encoding="ascii")))
+        except (OSError, UnicodeError, CodecError) as exc:
+            print(f"Error: {exc}", file=sys.stderr)
+            return 1
+        print(f"{args.command.title()} complete: {destination}")
+        return 0
 
     if args.command == "audit":
         # Input validation
