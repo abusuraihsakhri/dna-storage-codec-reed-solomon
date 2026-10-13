@@ -1,27 +1,33 @@
 [build-system]
-requires = ["setuptools>=61.0"]
+requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "dna-storage-codec-reed-solomon"
-version = "2.0.0"
-description = "DNA-Storage: Fountain Code & Reed-Solomon Base-4 DNA Codec Engine"
+version = "2.1.0"
+description = "Reversible binary/DNA codec with RS(255,253) single-byte correction, plus legacy audit utilities"
 readme = "README.md"
-authors = [{ name = "Dr. Abu Suraih Sakhri", email = "abusuraih@example.com" }]
+authors = [{ name = "Dr. Abu Suraih Sakhri" }]
 license = { text = "MIT" }
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
-    "Topic :: Security/Cryptography",
-    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
 ]
-requires-python = ">=3.9"
-dependencies = []
+requires-python = ">=3.10"
+dependencies = ["pydantic>=2.0,<3.0"]
+
+[project.optional-dependencies]
+api = ["fastapi>=0.110,<1", "uvicorn>=0.30,<1"]
+dev = ["fastapi>=0.110,<1", "uvicorn>=0.30,<1", "httpx>=0.27,<1", "pytest>=8,<10", "build>=1,<2"]
 
 [project.scripts]
 dna-storage-codec-reed-solomon = "dna_storage_codec.cli:main"
 
 [project.urls]
 Homepage = "https://github.com/abusuraihsakhri/dna-storage-codec-reed-solomon"
-Repository = "https://github.com/abusuraihsakhri/dna-storage-codec-reed-solomon.git"
+Repository = "https://github.com/abusuraihsakhri/dna-storage-codec-reed-solomon"
+
+[tool.setuptools.packages.find]
+include = ["agents*", "dna_storage_codec*"]
