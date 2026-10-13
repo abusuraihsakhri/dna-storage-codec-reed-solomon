@@ -1,5 +1,7 @@
 # DNA Storage Codec Reed–Solomon
 
+### [Open the Live Application →](https://abusuraihsakhri.github.io/dna-storage-codec-reed-solomon/)
+
 A small reference implementation for encoding binary data as DNA text and recovering it with per-block Reed–Solomon error correction. The browser interface works without a backend or network request.
 
 ## Features
