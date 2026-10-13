@@ -55,3 +55,17 @@ jobs:
           PY
       - name: Build distributable
         run: python -m build
+
+      - name: Verify wheel contains browser application assets
+        run: |
+          python - <<'PY'
+          import glob
+          from zipfile import ZipFile
+          wheels = glob.glob("dist/*.whl")
+          assert len(wheels) == 1, wheels
+          with ZipFile(wheels[0]) as wheel:
+              names = set(wheel.namelist())
+              for path in ("web/__init__.py", "web/index.html", "web/codec.mjs"):
+                  assert path in names, f"Missing packaged asset: {path}"
+          print("Wheel includes served browser assets.")
+          PY
