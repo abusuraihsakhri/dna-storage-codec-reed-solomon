@@ -54,4 +54,4 @@ jobs:
           assert not trail.verify_integrity()
           PY
       - name: Build distributable
-        run: python -m build --no-isolation
+        run: python -m build
