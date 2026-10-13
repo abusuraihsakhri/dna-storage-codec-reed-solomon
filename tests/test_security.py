@@ -91,3 +91,21 @@ class TestAuditTrail:
         trail = AuditTrail(secret_key="valid-secret-key-1234567890")
         with pytest.raises(SecurityException):
             trail.log("actor", "tier", "EVENT", {"patient": "MRN-12345678"})
+
+    def test_audit_detects_last_entry_signature_forgery(self):
+        trail = AuditTrail(secret_key="valid-secret-key-1234567890")
+        trail.log("actor", "tier", "EVENT", {"data": 1})
+        trail.logs[-1]["current_hash"] = "0" * 64
+        assert trail.verify_integrity() is False
+
+    def test_audit_detects_metadata_change(self):
+        trail = AuditTrail(secret_key="valid-secret-key-1234567890")
+        trail.log("actor", "tier", "EVENT", {"data": 1})
+        trail.logs[0]["event_type"] = "FORGED_EVENT"
+        assert trail.verify_integrity() is False
+
+    def test_get_trail_is_defensive_copy(self):
+        trail = AuditTrail(secret_key="valid-secret-key-1234567890")
+        trail.log("actor", "tier", "EVENT", {"data": 1})
+        trail.get_trail()[0]["actor"] = "forged"
+        assert trail.verify_integrity() is True
