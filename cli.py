@@ -143,6 +143,9 @@ def main(argv=None):
                 status_descriptor=r.get("status_descriptor", "NOMINAL"),
                 is_critical_flag=_parse_bool(r.get("is_critical_flag", False)),
             )
+            except (ValueError, TypeError) as exc:
+                print(f"Error: invalid CSV row {line_number}: {exc}", file=sys.stderr)
+                return 1
             dossier = supervisor.process_task(payload)
             row_dict = dict(r)
             row_dict["overall_urgency"] = dossier.overall_urgency.value
