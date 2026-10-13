@@ -13,6 +13,22 @@ from agents.base import AuditLogger
 supervisor = SystemSupervisor(model_provider="mock")
 
 
+def _parse_bool(value):
+    """Accept explicit CSV booleans; never interpret 'False' as truthy."""
+    if isinstance(value, bool):
+        return value
+    token = str(value).strip().lower()
+    if token in ("true", "1", "yes"):
+        return True
+    if token in ("false", "0", "no", ""):
+        return False
+    raise ValueError(f"invalid boolean flag: {value!r}")
+
+
+def _inside_directory(path: Path, directory: Path) -> bool:
+    return path == directory or directory in path.parents
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(prog="dna-storage-codec-reed-solomon", description="Dna Storage Codec Reed Solomon")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -98,11 +114,14 @@ def main(argv=None):
         input_path = Path(args.input).resolve()
         output_path = Path(args.output).resolve()
         cwd = Path.cwd().resolve()
-        if not str(input_path).startswith(str(cwd)):
+        if not _inside_directory(input_path, cwd):
             print(f"Error: Input path must be within the project directory: {cwd}")
             return 1
-        if not str(output_path).startswith(str(cwd)):
+        if not _inside_directory(output_path, cwd):
             print(f"Error: Output path must be within the project directory: {cwd}")
+            return 1
+        if input_path == output_path:
+            print("Error: Input and output CSV paths must be different")
             return 1
         if not input_path.exists():
             print(f"Error: Input file not found: {args.input}")
@@ -114,15 +133,19 @@ def main(argv=None):
 
         out_fields = fieldnames + ["overall_urgency", "integrity_status", "total_alerts", "audit_hash"]
         out_rows = []
-        for r in rows:
-            payload = SystemTaskPayload(
+        for line_number, r in enumerate(rows, start=2):
+            try:
+                payload = SystemTaskPayload(
                 task_id=r.get("task_id", "TASK-01"),
                 target_identifier=r.get("target_identifier", "TARGET-01"),
                 primary_metric=float(r.get("primary_metric", 15.0)),
                 secondary_metric=float(r.get("secondary_metric", 5.0)),
                 status_descriptor=r.get("status_descriptor", "NOMINAL"),
-                is_critical_flag=bool(r.get("is_critical_flag", False)),
+                is_critical_flag=_parse_bool(r.get("is_critical_flag", False)),
             )
+            except (ValueError, TypeError) as exc:
+                print(f"Error: invalid CSV row {line_number}: {exc}", file=sys.stderr)
+                return 1
             dossier = supervisor.process_task(payload)
             row_dict = dict(r)
             row_dict["overall_urgency"] = dossier.overall_urgency.value

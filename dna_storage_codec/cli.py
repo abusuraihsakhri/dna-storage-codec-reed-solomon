@@ -8,13 +8,38 @@ import sys
 from pathlib import Path
 from .models import FrontierPayload
 from .agents import DNAStorageCoordinator
+from .codec import CodecError, encode_bytes, decode_bytes
 
 coordinator = DNAStorageCoordinator()
+
+
+def _parse_bool(value):
+    """Accept explicit CSV booleans; never interpret 'False' as truthy."""
+    if isinstance(value, bool):
+        return value
+    token = str(value).strip().lower()
+    if token in ("true", "1", "yes"):
+        return True
+    if token in ("false", "0", "no", ""):
+        return False
+    raise ValueError(f"invalid boolean flag: {value!r}")
+
+
+def _inside_directory(path: Path, directory: Path) -> bool:
+    return path == directory or directory in path.parents
 
 
 def main(argv=None):
     parser = argparse.ArgumentParser(prog="dna-storage-codec-reed-solomon", description="DNA-Storage: Fountain Code & Reed-Solomon Base-4 DNA Codec Agent")
     subparsers = parser.add_subparsers(dest="command", required=True)
+
+    # Actual binary/DNA codec, independent of legacy threshold audits.
+    p_encode = subparsers.add_parser("encode", help="Encode a binary file as DNA text")
+    p_encode.add_argument("-i", "--input", required=True, help="Input binary file")
+    p_encode.add_argument("-o", "--output", required=True, help="Output .dna file")
+    p_decode = subparsers.add_parser("decode", help="Decode a DNA text file to binary")
+    p_decode.add_argument("-i", "--input", required=True, help="Input .dna file")
+    p_decode.add_argument("-o", "--output", required=True, help="Output binary file")
 
     # Audit
     p_audit = subparsers.add_parser("audit", help="Run single task evaluation")
@@ -40,6 +65,23 @@ def main(argv=None):
     p_serve.add_argument("--port", type=int, default=8000)
 
     args = parser.parse_args(argv)
+
+    if args.command in ("encode", "decode"):
+        source = Path(args.input)
+        destination = Path(args.output)
+        if source.resolve() == destination.resolve():
+            print("Error: input and output must be different files", file=sys.stderr)
+            return 1
+        try:
+            if args.command == "encode":
+                destination.write_text(encode_bytes(source.read_bytes()), encoding="ascii")
+            else:
+                destination.write_bytes(decode_bytes(source.read_text(encoding="ascii")))
+        except (OSError, UnicodeError, CodecError) as exc:
+            print(f"Error: {exc}", file=sys.stderr)
+            return 1
+        print(f"{args.command.title()} complete: {destination}")
+        return 0
 
     if args.command == "audit":
         # Input validation
@@ -87,11 +129,14 @@ def main(argv=None):
         input_path = Path(args.input).resolve()
         output_path = Path(args.output).resolve()
         cwd = Path.cwd().resolve()
-        if not str(input_path).startswith(str(cwd)):
+        if not _inside_directory(input_path, cwd):
             print(f"Error: Input path must be within the project directory: {cwd}")
             return 1
-        if not str(output_path).startswith(str(cwd)):
+        if not _inside_directory(output_path, cwd):
             print(f"Error: Output path must be within the project directory: {cwd}")
+            return 1
+        if input_path == output_path:
+            print("Error: Input and output CSV paths must be different")
             return 1
         if not input_path.exists():
             print(f"Error: Input file not found: {args.input}")
@@ -103,15 +148,19 @@ def main(argv=None):
 
         out_fields = fieldnames + ["overall_status", "total_alerts", "critical_count", "consensus_summary"]
         out_rows = []
-        for r in rows:
-            payload = FrontierPayload(
+        for line_number, r in enumerate(rows, start=2):
+            try:
+                payload = FrontierPayload(
                 task_id=r.get("task_id", "TASK-01"),
                 target_identifier=r.get("target_identifier", "TARGET-01"),
                 primary_metric=float(r.get("primary_metric", 15.0)),
                 secondary_metric=float(r.get("secondary_metric", 5.0)),
                 status_descriptor=r.get("status_descriptor", "NOMINAL"),
-                is_critical_flag=bool(r.get("is_critical_flag", False)),
+                is_critical_flag=_parse_bool(r.get("is_critical_flag", False)),
             )
+            except (ValueError, TypeError) as exc:
+                print(f"Error: invalid CSV row {line_number}: {exc}", file=sys.stderr)
+                return 1
             dossier = coordinator.process(payload)
             row_dict = dict(r)
             row_dict["overall_status"] = dossier["overall_status"]
