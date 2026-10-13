@@ -53,7 +53,8 @@ def _encode_block(block: bytes) -> bytes:
         raise CodecError("Invalid block length")
     # Generator polynomial (x + 1)(x + 2) = x^2 + 3x + 2
     work = bytearray(block) + bytearray(2)
-    for i, value in enumerate(block):
+    for i in range(len(block)):
+        value = work[i]
         if value:
             work[i + 1] ^= _multiply(value, 3)
             work[i + 2] ^= _multiply(value, 2)
