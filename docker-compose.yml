@@ -1,14 +1,8 @@
 services:
   dna-storage-codec-reed-solomon:
     build: .
-    container_name: dna-storage-codec-reed-solomon
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     environment:
-      - AUDIT_SECRET_KEY=${AUDIT_SECRET_KEY:?Set AUDIT_SECRET_KEY in the environment}
+      AUDIT_SECRET_KEY: ${AUDIT_SECRET_KEY:?Set AUDIT_SECRET_KEY before starting}
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
